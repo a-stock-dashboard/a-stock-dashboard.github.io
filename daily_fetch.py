@@ -950,11 +950,23 @@ def main(target_date=None):
     # 复制为index.html（静态网站默认入口）
     hf_index = Path(__file__).parent / "index.html"
     gen_html(result, hf_index)
-    # COS上传
+    # Git提交推送
+    try:
+        import subprocess
+        subprocess.run(["git", "add", "dashboard.html", "index.html"],
+                       cwd=str(Path(__file__).parent), capture_output=True)
+        subprocess.run(["git", "commit", "-m", f"update {today}"],
+                       cwd=str(Path(__file__).parent), capture_output=True)
+        subprocess.run(["git", "push"], cwd=str(Path(__file__).parent),
+                       capture_output=True, timeout=30)
+        print(f"  🚀 https://thunderli.gitee.io/a-stock-dashboard")
+    except Exception as e:
+        print(f"  [WARN] Git推送失败: {e}")
+
+    # COS上传（备用）
     for fpath in [hf, hf_date, hf_index]:
         url = upload_to_cos(str(fpath))
         if url and "dashboard.html" in url:
-            # 用静态网站域名输出
             web_url = url.replace(".cos.", ".cos-website.")
             print(f"  🔗 {web_url}")
             break
