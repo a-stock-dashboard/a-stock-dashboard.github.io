@@ -350,7 +350,7 @@ def compute_theme_boards(limit_up_pool):
     top = sorted(
         [(k, v) for k, v in themes.items() if len(v) >= 4],
         key=lambda x: -len(x[1])
-    )[:4]
+    )[:3]
     result = []
     for theme_name, stocks in top:
         stocks.sort(key=lambda x: (-x.get("board_days", 1), -x.get("sealed_amount", 0)))
@@ -370,7 +370,8 @@ def compute_theme_boards(limit_up_pool):
             "reason": theme_reason,
             "stocks": [{"code": s["code"], "name": s["name"],
                         "board_days": s.get("board_days", 1),
-                        "change_pct": s.get("change_pct", 0)} for s in stocks]
+                        "change_pct": s.get("change_pct", 0),
+                        "limit_time": s.get("first_block_time", "")} for s in stocks]
         })
     return result
 
@@ -416,6 +417,8 @@ def fetch_dragon_tiger_inst(today_str, reason_map=None):
         net_amt = row.get("NET_BUY_AMT", 0) or 0
         total_amt = row.get("ACCUM_AMOUNT", 0) or 0
         ratio = row.get("RATIO", 0) or 0
+        expl = str(row.get("EXPLANATION", "") or "")
+        is_3day = "3个交易" in expl or "三个交易" in expl
         entry = {
             "code": code, "name": name,
             "change_pct": round(chg, 2),
@@ -424,6 +427,7 @@ def fetch_dragon_tiger_inst(today_str, reason_map=None):
             "inst_net_yi": round(net_amt / 1e8, 2),
             "inst_net_ratio": round(ratio, 1),
             "reason": reason_map.get(code, ""),
+            "is_3day": is_3day,
         }
         if net_amt >= 1e8:
             net_buy.append(entry)
@@ -549,13 +553,13 @@ document.getElementById('app').innerHTML=
  '<div class="g2" style="align-items:start;">'+
  ' <div style="display:flex;flex-direction:column;gap:6px;">'+
  (function(){{var boards=D.consecutive_boards||{{}};var bds=Object.keys(boards).map(Number).sort(function(a,b){{return b-a;}});if(bds.length===0)return\'<div class="card"><div class="ch"><span class="hi">连板</span><span class="badge">0只</span></div><div class="em">今日无连板</div></div>\';return bds.map(function(bd){{var lst=boards[bd]||[];return\'<div class="card"><div class="ch"><span class="hi">\'+bd+\'连板</span><span class="badge">\'+lst.length+\'只</span></div><div class="bs">\'+(lst.length===0?\'<div class="em">无</div>\':\'<table><thead><tr><th>股票</th><th>涨幅</th><th>成交额</th><th>封板</th><th>开板</th><th>封单</th><th>题材</th></tr></thead><tbody>\'+lst.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="up">\'+P(s.change_pct)+\'</td><td>\'+A(s.amount_yi)+\'</td><td class="tc">\'+(s.last_block_time||\'—\')+\'</td><td>\'+(s.open_count||0)+\'</td><td>\'+(s.sealed_amount?s.sealed_amount+\'亿\':\'—\')+\'</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table>\')+\'</div></div>\';}}).join(\'\');}})()+
-	 (function(){{var th=D.theme_boards||[];var bdLabel=function(d){{return d>=2?d+\'连板\':\'首板\';}};var cols=[];for(var i=0;i<4;i++){{if(i<th.length){{var t=th[i];var rows=t.stocks.slice(0,15).map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="hi">\'+bdLabel(s.board_days)+\'</td></tr>\';}}).join(\'\');cols.push(\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;font-size:11px;">\'+E(t.theme)+\'</span><span class="badge">\'+t.count+\'只</span></div><div class="bs" style="max-height:none;overflow:visible;"><table style="table-layout:fixed;width:100%;"><thead><tr><th style="width:60%;">股票</th><th style="width:40%;">板数</th></tr></thead><tbody>\'+rows+\'</tbody></table></div></div>\');}}else{{cols.push(\'<div class="card"><div class="ch"><span style="color:var(--t2);">--</span></div><div class="em">暂无数据</div></div>\');}}}}return\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;">热门题材</span><span class="badge">\'+th.length+\'个</span></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px;">\'+cols.join(\'\')+\'</div></div>\';}})()+
+	 (function(){{var th=D.theme_boards||[];var bdLabel=function(d){{return d>=2?d+\'连板\':\'首板\';}};var cols=[];for(var i=0;i<3;i++){{if(i<th.length){{var t=th[i];var rows=t.stocks.slice(0,15).map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="hi">\'+bdLabel(s.board_days)+\'</td><td class="tc">\'+(s.limit_time||\'—\')+\'</td></tr>\';}}).join(\'\');cols.push(\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;font-size:11px;">\'+E(t.theme)+\'</span><span class="badge">\'+t.count+\'只</span></div><div class="bs" style="max-height:none;overflow:visible;"><table style="table-layout:fixed;width:100%;"><thead><tr><th style="width:45%;">股票</th><th style="width:20%;">板数</th><th style="width:35%;">涨停时间</th></tr></thead><tbody>\'+rows+\'</tbody></table></div></div>\');}}else{{cols.push(\'<div class="card"><div class="ch"><span style="color:var(--t2);">--</span></div><div class="em">暂无数据</div></div>\');}}}}return\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;">热门题材</span><span class="badge">\'+th.length+\'个</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;">\'+cols.join(\'\')+\'</div></div>\';}})()+
  ' </div>'+
  ' <div class="card"><div class="ch"><span style="color:var(--ac);font-weight:700;">首板</span><span class="badge">\'+(D.first_limit_up||[]).length+\'只</span></div><div class="bs">\'+((D.first_limit_up||[]).length===0?\'<div class="em">今日无首板</div>\':\'<table><thead><tr><th>股票</th><th>涨幅</th><th>成交额</th><th>封板</th><th>开板</th><th>封单</th><th>题材</th></tr></thead><tbody>\'+D.first_limit_up.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="up">\'+P(s.change_pct)+\'</td><td>\'+A(s.amount_yi)+\'</td><td class="tc">\'+(s.last_block_time||\'—\')+\'</td><td>\'+(s.open_count||0)+\'</td><td>\'+(s.sealed_amount?s.sealed_amount+\'亿\':\'—\')+\'</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table>\')+\'</div></div>\'+
  '</div>'+
  '<div class="g3" style="align-items:start;">'+
- (function(){{var db=D.dragon_tiger_buy||[];if(db.length===0)return\'<div class="card"><div class="ch"><span style="color:var(--rd);font-weight:700;">机构净买</span><span class="badge">>1亿</span></div><div class="em">今日无机构净买入>1亿</div></div>\';return\'<div class="card"><div class="ch"><span style="color:var(--rd);font-weight:700;">机构净买</span><span class="badge">>1亿 \'+db.length+\'只</span></div><div class="bs"><table><thead><tr><th>股票</th><th>涨幅</th><th>净买额</th><th>占比</th><th>题材</th></tr></thead><tbody>\'+db.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="\'+C(s.change_pct)+\'">\'+P(s.change_pct)+\'</td><td class="up">+\'+s.inst_net_yi.toFixed(2)+\'亿</td><td>\'+s.inst_net_ratio+\'%</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table></div></div>\';}})()+
- (function(){{var ds=D.dragon_tiger_sell||[];if(ds.length===0)return\'<div class="card"><div class="ch"><span style="color:var(--gn);font-weight:700;">机构净卖</span><span class="badge">>8000万</span></div><div class="em">今日无机构净卖出>8000万</div></div>\';return\'<div class="card"><div class="ch"><span style="color:var(--gn);font-weight:700;">机构净卖</span><span class="badge">>8000万 \'+ds.length+\'只</span></div><div class="bs"><table><thead><tr><th>股票</th><th>涨幅</th><th>净卖额</th><th>占比</th><th>题材</th></tr></thead><tbody>\'+ds.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="\'+C(s.change_pct)+\'">\'+P(s.change_pct)+\'</td><td class="dn">\'+s.inst_net_yi.toFixed(2)+\'亿</td><td>\'+s.inst_net_ratio+\'%</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table></div></div>\';}})()+
+ (function(){{var db=D.dragon_tiger_buy||[];if(db.length===0)return\'<div class="card"><div class="ch"><span style="color:var(--rd);font-weight:700;">机构净买</span><span class="badge">>1亿</span></div><div class="em">今日无机构净买入>1亿</div></div>\';return\'<div class="card"><div class="ch"><span style="color:var(--rd);font-weight:700;">机构净买</span><span class="badge">>1亿 \'+db.length+\'只</span></div><div class="bs"><table><thead><tr><th>股票</th><th>涨幅</th><th>净买额</th><th>占比</th><th>题材</th></tr></thead><tbody>\'+db.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="\'+C(s.change_pct)+\'">\'+P(s.change_pct)+\'</td><td class="up">+\'+s.inst_net_yi.toFixed(2)+\'亿\'+(s.is_3day?\'<span style=\"font-size:9px;color:#d2991d;margin-left:4px;\">3日</span>\':\'\')+\'</td><td>\'+s.inst_net_ratio+\'%</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table></div></div>\';}})()+
+ (function(){{var ds=D.dragon_tiger_sell||[];if(ds.length===0)return\'<div class="card"><div class="ch"><span style="color:var(--gn);font-weight:700;">机构净卖</span><span class="badge">>8000万</span></div><div class="em">今日无机构净卖出>8000万</div></div>\';return\'<div class="card"><div class="ch"><span style="color:var(--gn);font-weight:700;">机构净卖</span><span class="badge">>8000万 \'+ds.length+\'只</span></div><div class="bs"><table><thead><tr><th>股票</th><th>涨幅</th><th>净卖额</th><th>占比</th><th>题材</th></tr></thead><tbody>\'+ds.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td class="\'+C(s.change_pct)+\'">\'+P(s.change_pct)+\'</td><td class="dn">\'+s.inst_net_yi.toFixed(2)+\'亿\'+(s.is_3day?\'<span style=\"font-size:9px;color:#d2991d;margin-left:4px;\">3日</span>\':\'\')+\'</td><td>\'+s.inst_net_ratio+\'%</td><td>\'+(s.reason?\'<span class="rt">\'+E(s.reason)+\'</span>\':\'—\')+\'</td></tr>\';}}).join(\'\')+\'</tbody></table></div></div>\';}})()+
  (function(){{var ab=D.abnormal_volatility||[];if(ab.length===0)return\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;">严重异常波动</span><span class="badge">向上·期间内</span></div><div class="em">近期无严重异常波动（向上）</div></div>\';return\'<div class="card"><div class="ch"><span style="color:#d2991d;font-weight:700;">严重异常波动</span><span class="badge">向上·期间内 \'+ab.length+\'只</span></div><div class="bs"><table><thead><tr><th>股票</th><th>起始日期</th><th>结束日期</th></tr></thead><tbody>\'+ab.map(function(s){{return\'<tr><td><span class="sn">\'+E(s.name)+\'</span><span class="sc">\'+s.code+\'</span></td><td>\'+s.start_date+\'</td><td>\'+s.end_date+\'</td></tr>\';}}).join(\'\')+\'</tbody></table></div></div>\';}})()+
  '</div>'+
  '</div>';
@@ -726,20 +730,22 @@ def upload_to_cos(local_path):
     sign_time = f"{int(now.timestamp())-60};{int(now.timestamp())+3600}"
     http_method = "put"
     uri = f"/{key_name}"
-    http_headers = f"host={host}"
+    content_type = "text/html; charset=utf-8"
+    # 按字典序排列header: host -> content-type
+    http_headers = f"content-type={content_type}&host={host}"
     sha1 = hashlib.sha1(body).hexdigest()
     http_string = f"{http_method}\n{uri}\n\n{http_headers}\n"
     string_to_sign = f"sha1\n{sign_time}\n{hashlib.sha1(http_string.encode()).hexdigest()}\n"
     sign_key = hmac.new(secret_key.encode(), sign_time.encode(), hashlib.sha1).hexdigest()
     signature = hmac.new(sign_key.encode(), string_to_sign.encode(), hashlib.sha1).hexdigest()
     auth = (f"q-sign-algorithm=sha1&q-ak={secret_id}&q-sign-time={sign_time}"
-            f"&q-key-time={sign_time}&q-header-list=host&q-url-param-list="
+            f"&q-key-time={sign_time}&q-header-list=content-type;host&q-url-param-list="
             f"&q-signature={signature}")
 
     req = urllib.request.Request(url, data=body, method="PUT")
     req.add_header("Host", host)
+    req.add_header("Content-Type", content_type)
     req.add_header("Authorization", auth)
-    req.add_header("Content-Type", "text/html; charset=utf-8")
     try:
         urllib.request.urlopen(req, timeout=30)
         return url
@@ -943,33 +949,24 @@ def main(target_date=None):
     jf = DATA_DIR / f"{today}.json"
     with open(jf,"w",encoding="utf-8") as f:
         json.dump(result,f,ensure_ascii=False,indent=2)
-    hf = Path(__file__).parent / "dashboard.html"
     hf_date = Path(__file__).parent / f"dashboard_{today}.html"
-    gen_html(result, hf)
     gen_html(result, hf_date)
-    # 复制为index.html（静态网站默认入口）
+    # index.html（静态网站默认入口）
     hf_index = Path(__file__).parent / "index.html"
     gen_html(result, hf_index)
     # Git提交推送
     try:
         import subprocess
-        subprocess.run(["git", "add", "dashboard.html", "index.html"],
+        subprocess.run(["git", "add", "index.html", f"dashboard_{today}.html"],
                        cwd=str(Path(__file__).parent), capture_output=True)
         subprocess.run(["git", "commit", "-m", f"update {today}"],
                        cwd=str(Path(__file__).parent), capture_output=True)
-        subprocess.run(["git", "push"], cwd=str(Path(__file__).parent),
-                       capture_output=True, timeout=30)
-        print(f"  🚀 https://thunderli.gitee.io/a-stock-dashboard")
+        subprocess.run(["git", "push", "github", "master"], cwd=str(Path(__file__).parent),
+                       capture_output=True, timeout=120)
+        print(f"  🚀 GitHub: https://a-stock-dashboard.github.io/")
     except Exception as e:
         print(f"  [WARN] Git推送失败: {e}")
 
-    # COS上传（备用）
-    for fpath in [hf, hf_date, hf_index]:
-        url = upload_to_cos(str(fpath))
-        if url and "dashboard.html" in url:
-            web_url = url.replace(".cos.", ".cos-website.")
-            print(f"  🔗 {web_url}")
-            break
     # 生成PDF
     pf = Path(__file__).parent / "dashboard.pdf"
     try:
@@ -981,14 +978,14 @@ def main(target_date=None):
             subprocess.run(
                 [edge, "--headless=new", "--disable-gpu",
                  f"--print-to-pdf={pf.resolve()}",
-                 f"file:///{hf.resolve().as_posix()}"],
+                 f"file:///{hf_date.resolve().as_posix()}"],
                 timeout=30, check=True, capture_output=True)
             print(f"  PDF → {pf}")
         else:
             print("  [WARN] 未找到Edge，跳过PDF")
     except Exception as e:
         print(f"  [WARN] PDF失败: {e}")
-    print(f"\n{'='*50}\n  JSON → {jf}\n  HTML → {hf}\n{'='*50}")
+    print(f"\n{'='*50}\n  JSON → {jf}\n  HTML → {hf_date}\n{'='*50}")
 
 
 if __name__ == "__main__":
