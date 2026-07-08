@@ -961,7 +961,7 @@ def main(target_date=None):
                        cwd=str(Path(__file__).parent), capture_output=True)
         subprocess.run(["git", "commit", "-m", f"update {today}"],
                        cwd=str(Path(__file__).parent), capture_output=True)
-        subprocess.run(["git", "push", "github", "master"], cwd=str(Path(__file__).parent),
+        subprocess.run(["git", "push", "github", "master:main"], cwd=str(Path(__file__).parent),
                        capture_output=True, timeout=120)
         print(f"  🚀 GitHub: https://a-stock-dashboard.github.io/")
     except Exception as e:
